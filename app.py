@@ -433,6 +433,7 @@ def render_sidebar() -> str:
 
         if config.is_api_configured():
             st.success("✅ Gemini API: Connected")
+            st.caption(f"Model: **{config.GEMINI_MODEL}** ({config.GEMINI_MODEL_SOURCE})")
         else:
             st.warning("⚠️ Gemini API: Not configured")
             with st.expander("How to add API key"):

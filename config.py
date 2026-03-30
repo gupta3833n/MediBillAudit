@@ -38,7 +38,60 @@ def _get_secret(key: str, default: str = "") -> str:
 
 # ─── Gemini API ───────────────────────────────────────────────────────────────
 GEMINI_API_KEY: str = _get_secret("GEMINI_API_KEY")
-GEMINI_MODEL: str = _get_secret("GEMINI_MODEL", "gemini-1.5-pro")
+
+# Preferred models in priority order (best first)
+_FALLBACK_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-pro-vision",
+]
+
+
+def detect_gemini_model(api_key: str = "") -> tuple[str, str]:
+    """
+    Auto-detect the best available Gemini model.
+
+    Returns (model_name, source) where source is one of:
+        "override"  — user set GEMINI_MODEL explicitly
+        "detected"  — discovered via list_models() API
+        "fallback"  — using first model from fallback list (API listing failed)
+    """
+    # 1. Check for explicit user override
+    override = _get_secret("GEMINI_MODEL")
+    if override:
+        return override, "override"
+
+    # 2. Try listing available models from the API
+    key = api_key or GEMINI_API_KEY
+    if key and key not in ("", "your-api-key-here", "YOUR_API_KEY") and len(key) > 10:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=key)
+            available = set()
+            for m in genai.list_models():
+                if "generateContent" in (m.supported_generation_methods or []):
+                    # m.name is like "models/gemini-2.0-flash"
+                    short = m.name.replace("models/", "")
+                    available.add(short)
+            # Pick the best available model from our preference list
+            for preferred in _FALLBACK_MODELS:
+                if preferred in available:
+                    return preferred, "detected"
+            # If none of our preferred models found, pick the first flash/pro model
+            for name in sorted(available):
+                if "gemini" in name:
+                    return name, "detected"
+        except Exception:
+            pass
+
+    # 3. Fallback — return first preferred model
+    return _FALLBACK_MODELS[0], "fallback"
+
+
+# Resolve model at import time (cached for the session)
+GEMINI_MODEL, GEMINI_MODEL_SOURCE = detect_gemini_model()
 
 # ─── App settings ─────────────────────────────────────────────────────────────
 APP_NAME = "MediBill Audit"

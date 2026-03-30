@@ -55,7 +55,7 @@ def parse_bill_with_gemini(
     file_bytes: bytes,
     mime_type: str,
     api_key: str,
-    model: str = "gemini-1.5-pro",
+    model: str = "gemini-2.0-flash",
 ) -> Optional[list[dict]]:
     """
     Send the bill image/PDF to Google Gemini and extract structured line items.
