@@ -437,6 +437,9 @@ def render_sidebar() -> str:
             st.warning("⚠️ Gemini API: Not configured")
             with st.expander("How to add API key"):
                 st.markdown(
+                    "**Option 1 — Streamlit Cloud:**\n"
+                    "Add `GEMINI_API_KEY` in your app's *Secrets* settings.\n\n"
+                    "**Option 2 — Local:**\n"
                     "Create a `.env` file in the project folder:\n\n"
                     "```\nGEMINI_API_KEY=your_key_here\n```\n\n"
                     "Get a free key at [Google AI Studio](https://aistudio.google.com/)"

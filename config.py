@@ -1,12 +1,12 @@
 """
 Configuration for MediBill Audit
-API keys are loaded from environment variables or a .env file.
+API keys are loaded from Streamlit secrets, environment variables, or a .env file.
 """
 
 import os
 from pathlib import Path
 
-# Load .env file if it exists
+# Load .env file if it exists (local development)
 try:
     from dotenv import load_dotenv
     env_path = Path(__file__).parent / ".env"
@@ -17,9 +17,28 @@ try:
 except ImportError:
     pass  # python-dotenv not installed; rely on system env vars
 
+
+def _get_secret(key: str, default: str = "") -> str:
+    """Load a secret: Streamlit secrets → env var → default."""
+    # 1. Streamlit Cloud secrets (highest priority)
+    try:
+        import streamlit as st
+        val = st.secrets.get(key, "")
+        if val:
+            return str(val)
+    except Exception:
+        pass  # Not running inside Streamlit, or key not set
+    # 2. Environment variable
+    val = os.getenv(key, "")
+    if val:
+        return val
+    # 3. Default
+    return default
+
+
 # ─── Gemini API ───────────────────────────────────────────────────────────────
-GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+GEMINI_API_KEY: str = _get_secret("GEMINI_API_KEY")
+GEMINI_MODEL: str = _get_secret("GEMINI_MODEL", "gemini-1.5-pro")
 
 # ─── App settings ─────────────────────────────────────────────────────────────
 APP_NAME = "MediBill Audit"
