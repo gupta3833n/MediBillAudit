@@ -416,6 +416,16 @@ def render_recommendations(results: list[dict], summary: dict) -> None:
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 
+def _get_active_api_key() -> tuple[str, str]:
+    """Return (api_key, source) based on priority: user key > server key > empty."""
+    user_key = st.session_state.get("user_api_key", "").strip()
+    if config.is_valid_api_key(user_key):
+        return user_key, "Your API Key"
+    if config.is_valid_api_key(config.GEMINI_API_KEY):
+        return config.GEMINI_API_KEY, "Server Key"
+    return "", "Demo Mode"
+
+
 def render_sidebar() -> str:
     """Render the sidebar and return the selected mode."""
     with st.sidebar:
@@ -431,17 +441,35 @@ def render_sidebar() -> str:
 
         st.divider()
 
-        if config.is_api_configured():
-            st.success("✅ Gemini API: Connected")
-            st.caption(f"Model: **{config.GEMINI_MODEL}** ({config.GEMINI_MODEL_SOURCE})")
+        # ── Bring Your Own Key ──────────────────────────────────────────────
+        st.markdown("#### 🔑 API Key")
+        st.text_input(
+            "Enter your Gemini API Key",
+            type="password",
+            key="user_api_key",
+            placeholder="Paste your Gemini API key here",
+        )
+        st.caption("Your key is never stored. Get a free key at [ai.google.dev](https://ai.google.dev)")
+
+        active_key, key_source = _get_active_api_key()
+        if key_source == "Your API Key":
+            st.success(f"✅ Using: **{key_source}**")
+        elif key_source == "Server Key":
+            st.success(f"✅ Using: **{key_source}**")
         else:
-            st.warning("⚠️ Gemini API: Not configured")
+            st.warning("⚠️ Using: **Demo Mode**")
+
+        if active_key:
+            model, source = config.detect_gemini_model(active_key)
+            st.caption(f"Model: **{model}** ({source})")
+        else:
             with st.expander("How to add API key"):
                 st.markdown(
-                    "**Option 1 — Streamlit Cloud:**\n"
+                    "**Option 1 — Enter above:**\n"
+                    "Paste your Gemini API key in the field above.\n\n"
+                    "**Option 2 — Streamlit Cloud:**\n"
                     "Add `GEMINI_API_KEY` in your app's *Secrets* settings.\n\n"
-                    "**Option 2 — Local:**\n"
-                    "Create a `.env` file in the project folder:\n\n"
+                    "**Option 3 — Local `.env` file:**\n"
                     "```\nGEMINI_API_KEY=your_key_here\n```\n\n"
                     "Get a free key at [Google AI Studio](https://aistudio.google.com/)"
                 )
@@ -545,7 +573,8 @@ def render_demo_mode() -> None:
 def render_upload_mode() -> None:
     st.markdown("### 📤 Upload Your Hospital Bill")
 
-    api_ready = config.is_api_configured()
+    active_key, key_source = _get_active_api_key()
+    api_ready = config.is_valid_api_key(active_key)
 
     if not api_ready:
         st.markdown(
@@ -583,11 +612,12 @@ def render_upload_mode() -> None:
             with st.spinner("Reading your bill with AI... this may take 20–40 seconds..."):
                 try:
                     mime, file_bytes = read_uploaded_file(uploaded)
+                    model_name, _ = config.detect_gemini_model(active_key)
                     items = parse_bill_with_gemini(
                         file_bytes,
                         mime,
-                        config.GEMINI_API_KEY,
-                        config.GEMINI_MODEL,
+                        active_key,
+                        model_name,
                     )
 
                     if not items:

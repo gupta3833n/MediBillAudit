@@ -110,10 +110,15 @@ UNKNOWN_ITEM_FLAG_THRESHOLD = 500
 BENCHMARKS_FILE = Path(__file__).parent / "benchmarks" / "rates.json"
 
 
-def is_api_configured() -> bool:
-    """Return True if the Gemini API key looks valid (non-empty, not placeholder)."""
+def is_valid_api_key(key: str) -> bool:
+    """Return True if an API key string looks valid (non-empty, not placeholder)."""
     return bool(
-        GEMINI_API_KEY
-        and GEMINI_API_KEY not in ("", "your-api-key-here", "YOUR_API_KEY")
-        and len(GEMINI_API_KEY) > 10
+        key
+        and key not in ("", "your-api-key-here", "YOUR_API_KEY")
+        and len(key) > 10
     )
+
+
+def is_api_configured(key: str = "") -> bool:
+    """Return True if the given key (or the default GEMINI_API_KEY) looks valid."""
+    return is_valid_api_key(key or GEMINI_API_KEY)
